@@ -82,6 +82,7 @@ dialog[open]{animation:in .2s ease-out}
 dialog h2{margin:0 0 6px;font-size:1.2rem}dialog p{color:var(--mute);margin:0 0 14px;font-size:.92rem}
 dialog .field{margin-bottom:14px}.acts{display:flex;gap:10px;justify-content:flex-end}
 .need{flex-wrap:wrap;justify-content:space-between;gap:14px}.need p{margin:0}.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.thumbs img{height:64px;width:auto;border-radius:6px;border:1px solid var(--line)}
+select{flex:1;min-width:0;padding:14px 0;border:0;background:transparent;color:var(--ink);font:inherit;outline:0;cursor:pointer}option{background:var(--card);color:var(--ink)}
 .hint{margin:0 0 8px!important;font-size:.88rem!important}.lbl{display:block;margin:10px 0 4px;font-weight:700;font-size:.92rem}
 :focus-visible{outline:2px solid var(--red);outline-offset:2px}
 @media(forced-colors:active){.btn,.chip,.link,.x{border:2px solid ButtonText}.cmp .bar{background:Highlight;forced-color-adjust:none}.cmp .bar:after{background:Highlight;color:HighlightText}.demo i{background:Highlight}}
@@ -107,7 +108,7 @@ dialog .field{margin-bottom:14px}.acts{display:flex;gap:10px;justify-content:fle
   <section class="hero">
     <div>
       <h1>Görsellerdeki yazıyı Türkçeye çevir.</h1>
-      <p class="lead">Bir Reddit gönderisi yapıştır. İngilizce yazılar silinir, aynı yere doğal Türkçe olarak geri yazılır. Küfür ve argo dahil, hiçbir şey yumuşatılmaz.</p>
+      <p class="lead">Bir Reddit gönderisi yapıştır. İngilizce yazılar silinir, aynı yere doğal Türkçe olarak geri yazılır. Çeviri sırasında hiçbir içerik filtresi eklenmez. Ücretsizdir, anahtar gerekmez.</p>
     </div>
     <div class="demo" aria-hidden="true"><div class="demo-l" lang="en">No way this is real.</div><div class="demo-r">Yok artık, bu gerçek olamaz.</div><i></i></div>
   </section>
@@ -127,7 +128,7 @@ dialog .field{margin-bottom:14px}.acts{display:flex;gap:10px;justify-content:fle
 
   <p id="live" class="sr" role="status" aria-live="polite"></p>
   <div id="status" class="status" hidden aria-hidden="true"><span class="spin"></span><p id="msg"></p></div>
-  <div id="need" class="status need" hidden><div><p id="needTxt"></p><div id="thumbs" class="thumbs"></div></div><button class="btn" id="needBtn" type="button">API anahtarı ekle</button></div>
+  <div id="need" class="status need" hidden><div><p id="needTxt"></p><div id="thumbs" class="thumbs"></div></div><button class="btn" id="needBtn" type="button">Ayarları aç</button></div>
   <section id="out" aria-label="Sonuçlar" aria-busy="false"></section>
 
   <h2 class="sr">Nasıl çalışır</h2>
@@ -137,14 +138,20 @@ dialog .field{margin-bottom:14px}.acts{display:flex;gap:10px;justify-content:fle
     <li><b>3. Çevir</b><span>Türkçe metin orijinalin yerine yazılır.</span></li>
   </ol>
   </main>
-  <footer>TS Translation. Yazı algılama tarayıcında çalışır; çeviri için görsel yalnızca Anthropic API'sine gönderilir.</footer>
+  <footer>TS Translation. Yazı algılama senin cihazında çalışır. Chrome'da çeviri de cihazında yapılır; diğer tarayıcılarda yalnızca yazı metni MyMemory'ye gönderilir, görselin kendisi gönderilmez. Claude seçilirse görsel Anthropic'e gönderilir.</footer>
 </div>
 
 <dialog id="dlg" aria-labelledby="dt" aria-describedby="dd">
   <div class="dh"><h2 id="dt">Ayarlar</h2><button class="x" id="x" type="button" aria-label="Kapat">×</button></div>
-  <p id="dd">Anahtar yalnızca bu tarayıcıda saklanır. Başkasıyla paylaşma ve koda yazma.</p>
-  <label for="key" class="lbl">Anthropic API anahtarı</label>
-  <label class="field"><input id="key" type="password" placeholder="sk-ant-..." aria-label="Anthropic API anahtarı" autocomplete="off" autofocus></label>
+  <p id="dd">Varsayılan çeviri ücretsizdir ve API anahtarı gerektirmez.</p>
+  <label for="engine" class="lbl">Çeviri motoru</label>
+  <label class="field"><select id="engine" autofocus><option value="auto">Ücretsiz (anahtar gerekmez)</option><option value="claude">Claude (daha doğal, API anahtarı gerekir)</option></select></label>
+  <label for="key" class="lbl">Anthropic API anahtarı (isteğe bağlı)</label>
+  <p class="hint">Yalnızca Claude seçiliyse kullanılır. Bu tarayıcıda saklanır; kimseyle paylaşma, koda yazma.</p>
+  <label class="field"><input id="key" type="password" placeholder="sk-ant-..." aria-label="Anthropic API anahtarı" autocomplete="off"></label>
+  <label for="mmemail" class="lbl">E-posta (isteğe bağlı)</label>
+  <p class="hint">Ücretsiz motorun (MyMemory) günlük sınırını 5.000'den 50.000 karaktere çıkarır. E-posta MyMemory'ye gönderilir.</p>
+  <label class="field"><input id="mmemail" type="email" autocomplete="email" placeholder="ad@ornek.com"></label>
   <label for="proxy" class="lbl">Proxy adresi (isteğe bağlı)</label>
   <p class="hint">Reddit linkleri açılmazsa kendi ücretsiz proxy'ni yaz. Kurulum README'de.</p>
   <label class="field"><input id="proxy" type="url" inputmode="url" autocomplete="off" placeholder="https://ts-proxy.kullanici.workers.dev/"></label>
@@ -170,7 +177,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }
 };
 const msg = (t, err) => { $("#msg").textContent = t; $("#live").textContent = t; $("#status").hidden = !t; $("#status").className = "status" + (err ? " err" : ""); };
-const openKey = () => { $("#proxy").value = store.get("proxy"); $("#dlg").showModal(); };
+const openKey = () => { $("#engine").value = store.get("engine") || "auto"; $("#mmemail").value = store.get("mmemail"); $("#proxy").value = store.get("proxy"); $("#dlg").showModal(); };
 const motion = () => matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); kids.forEach(k => e.append(k)); return e; };
 
@@ -337,7 +344,7 @@ function addResult(srcCanvas, outCanvas, blocks, warning, n) {
   const dl = el("a", { href: res, download: `ts-translation-${n}.png`, textContent: "İndir" });
   dl.setAttribute("aria-label", `Görsel ${n} çevirisini indir`);
   const item = el("div", { className: "item" }, compare(orig, res, n),
-    el("div", { className: "foot" }, el("span", { textContent: `${blocks.length} yazı bloğundan ${done} tanesi çevrildi` }), dl));
+    el("div", { className: "foot" }, el("span", { textContent: `${blocks.length} yazı bloğundan ${done} tanesi çevrildi${used && done ? " · " + used : ""}` }), dl));
   if (warning) { const w = el("p", { className: "warn", textContent: warning }); w.setAttribute("role", "alert"); item.append(w); }
   if (blocks.length) {
     const tb = el("tbody");
@@ -352,19 +359,62 @@ async function toCanvas(blob) {
   const bmp = await createImageBitmap(blob);
   const c = el("canvas", { width: bmp.width, height: bmp.height }); c.getContext("2d").drawImage(bmp, 0, 0); return c;
 }
+/* ---------- Free translation engines (no API key) ---------- */
+const engine = () => store.get("engine") || "auto";
+let used = "", chromeP = null;
+function warmChrome() {   // must start while the click/paste is still a "user gesture" so Chrome may download its language pack
+  if (chromeP || !("Translator" in self)) return;
+  chromeP = (async () => {
+    try {
+      const o = { sourceLanguage: "en", targetLanguage: "tr" };
+      if ((await Translator.availability(o)) === "unavailable") return null;
+      return await Translator.create({ ...o, monitor(m) { m.addEventListener("downloadprogress", e => msg(`Çeviri modeli indiriliyor… %${Math.round(e.loaded * 100)}`)); } });
+    } catch { return null; }
+  })().then(t => { if (!t) chromeP = null; return t; });
+}
+function chunks(t, n = 450) {
+  const out = []; let cur = "";
+  for (const w of t.split(" ")) { if (cur && (cur + " " + w).length > n) { out.push(cur); cur = w; } else cur = cur ? cur + " " + w : w; }
+  if (cur) out.push(cur); return out;
+}
+async function myMemory(text) {
+  const em = store.get("mmemail").trim(), out = [];
+  for (const c of chunks(text)) {
+    const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(c)}&langpair=en|tr${em ? "&de=" + encodeURIComponent(em) : ""}`);
+    const j = await r.json().catch(() => ({})), t = j.responseData?.translatedText || "";
+    if (r.status === 429 || String(j.responseStatus) === "429" || /MYMEMORY WARNING/i.test(t))
+      throw new Error("Ücretsiz günlük çeviri sınırı doldu (MyMemory). Yarın tekrar dene, Ayarlar'a e-posta ekleyerek sınırı artır ya da Claude'u seç.");
+    if (!r.ok || String(j.responseStatus) !== "200") throw new Error("Çeviri servisi yanıt vermedi (" + (j.responseDetails || r.status) + ").");
+    out.push(new DOMParser().parseFromString(t, "text/html").documentElement.textContent);
+  }
+  return out.join(" ");
+}
+async function translateFree(blocks) {
+  const tr = await chromeP;
+  for (const b of blocks) {
+    const t = b.text.replace(/\s+/g, " ").trim();
+    if (!/[A-Za-z]{2}/.test(t) || /^(@|u\/|r\/)|https?:\/\//i.test(t)) { b.tr = null; continue; }   // leave handles, links, numbers alone
+    let r = null;
+    if (tr) { try { r = await tr.translate(t); used = "Chrome, cihazda"; } catch {} }
+    if (r == null) { r = await myMemory(t); used = "MyMemory"; }
+    b.tr = r;
+  }
+}
+
 let pending = null;
 function needKey(p) {
   pending = p;
   const th = $("#thumbs"); th.replaceChildren();
   (p.sources || []).forEach((x, i) => { if (typeof x !== "string") th.append(el("img", { src: URL.createObjectURL(x), alt: `Eklenen görsel ${i + 1}` })); });
-  $("#needTxt").textContent = (p.url ? "Link hazır." : `${p.sources.length} görsel hazır.`) + " Çevirmek için önce Anthropic API anahtarını ekle.";
+  $("#needTxt").textContent = (p.url ? "Link hazır." : `${p.sources.length} görsel hazır.`) + " Claude seçili ama API anahtarı yok. Ayarlar'dan anahtarı ekle ya da ücretsiz çeviriyi seç.";
   $("#live").textContent = $("#needTxt").textContent;
   $("#need").hidden = false;
   $("#need").scrollIntoView({ behavior: motion(), block: "center" });
 }
 async function run(sources, heading) {
   if (document.body.dataset.busy) return msg("Önceki çeviri sürüyor, bitmesini bekle.", true);
-  if (!store.get("key")) return needKey({ sources, heading });
+  if (engine() === "claude" && !store.get("key")) return needKey({ sources, heading });
+  warmChrome();
   $("#need").hidden = true; pending = null;
   $("#go").disabled = true; document.body.dataset.busy = "1"; $("#out").setAttribute("aria-busy", "true"); $("#out").replaceChildren();
   const post = el("div", { className: "post", id: "post" }, el("h2", { textContent: heading || "Sonuçlar", tabIndex: -1 })); $("#out").append(post); post.scrollIntoView({ behavior: motion(), block: "start" });
@@ -376,8 +426,8 @@ async function run(sources, heading) {
       msg(`${tag}: yazılar taranıyor… (ilk seferde OCR modeli indirilir)`);
       const blocks = group(await detect(src));
       if (!blocks.length) { addResult(src, src, [], "Bu görselde İngilizce yazı bulunamadı.", i + 1); continue; }
-      msg(`${tag}: çevriliyor…`);
-      try { await translate(src, blocks); addResult(src, paint(src, blocks), blocks, null, i + 1); }
+      used = ""; msg(`${tag}: çevriliyor…`);
+      try { await (engine() === "claude" ? translate(src, blocks).then(() => { used = "Claude"; }) : translateFree(blocks)); addResult(src, paint(src, blocks), blocks, null, i + 1); }
       catch (e) { blocks.forEach(b => b.tr = null); addResult(src, src, blocks, e.message, i + 1); }
     }
     msg("");
@@ -386,14 +436,14 @@ async function run(sources, heading) {
   if (!$("#status").classList.contains("err")) { $("#live").textContent = "Çeviri tamamlandı."; post.querySelector("h2").focus({ preventScroll: true }); }
 }
 
-const chip = () => { const ok = !!store.get("key"); $("#chipTxt").textContent = ok ? "API anahtarı hazır" : "API anahtarı ekle"; $("#chip").dataset.ok = ok ? "1" : ""; };
+const chip = () => { const c = engine() === "claude"; $("#chipTxt").textContent = c ? "Çeviri: Claude" : "Çeviri: Ücretsiz"; $("#chip").dataset.ok = !c || store.get("key") ? "1" : ""; };
 $("#chip").onclick = openKey; chip();
 $("#save").onclick = () => {
   const v = $("#key").value.trim();
   if (v) store.set("key", v);
-  store.set("proxy", $("#proxy").value.trim());
+  store.set("engine", $("#engine").value); store.set("mmemail", $("#mmemail").value.trim()); store.set("proxy", $("#proxy").value.trim());
   $("#key").value = ""; chip(); $("#dlg").close(); msg("");
-  if (pending && store.get("key")) { const p = pending; pending = null; $("#need").hidden = true; p.url ? goUrl(p.url) : run(p.sources, p.heading); }
+  if (pending && !(engine() === "claude" && !store.get("key"))) { const p = pending; pending = null; $("#need").hidden = true; p.url ? goUrl(p.url) : run(p.sources, p.heading); }
 };
 $("#clear").onclick = () => { store.set("key", ""); chip(); $("#dlg").close(); };
 async function goUrl(u) {
@@ -402,14 +452,15 @@ async function goUrl(u) {
   catch (e) { msg(e.message, true); }
 }
 $("#f").onsubmit = ev => {
-  ev.preventDefault();
+  ev.preventDefault(); warmChrome();
   const u = $("#url").value.trim();
   if (!u) { msg("Önce bir Reddit linki yapıştır.", true); return $("#url").focus(); }
-  if (!store.get("key")) return needKey({ url: u });
+  if (engine() === "claude" && !store.get("key")) return needKey({ url: u });
   $("#need").hidden = true; pending = null;
   goUrl(u);
 };
 const files = fl => {
+  warmChrome();
   const all = [...fl], a = all.filter(f => f.type.startsWith("image/"));
   if (a.length) run(a, "Yüklenen görseller"); else if (all.length) msg("Bu bir görsel dosyası değil. PNG, JPG veya WebP ekle.", true);
 };
