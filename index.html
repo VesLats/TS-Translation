@@ -107,14 +107,15 @@ select{flex:1;min-width:0;padding:14px 0;border:0;background:transparent;color:v
 
   <section class="hero">
     <div>
-      <h1>Görsellerdeki yazıyı Türkçeye çevir.</h1>
-      <p class="lead">Bir Reddit gönderisi yapıştır. İngilizce yazılar silinir, aynı yere doğal Türkçe olarak geri yazılır. Çeviri sırasında hiçbir içerik filtresi eklenmez. Ücretsizdir, anahtar gerekmez.</p>
+      <h1>Görsellerdeki yazıyı istediğin dile çevir.</h1>
+      <p class="lead">Bir Reddit gönderisi yapıştır. Yazılar silinir, aynı yere seçtiğin dilde doğal çeviri olarak geri yazılır. Çeviri sırasında hiçbir içerik filtresi eklenmez. Ücretsizdir, anahtar gerekmez.</p>
     </div>
     <div class="demo" aria-hidden="true"><div class="demo-l" lang="en">No way this is real.</div><div class="demo-r">Yok artık, bu gerçek olamaz.</div><i></i></div>
   </section>
 
   <section class="card" aria-labelledby="ct">
     <h2 id="ct" class="sr">Çevirmek istediğin görsel</h2>
+    <div style="display:flex;gap:10px;margin-bottom:14px"><label class="field"><select id="src" aria-label="Kaynak dil"></select></label><span aria-hidden="true" style="align-self:center;color:var(--mute)">→</span><label class="field"><select id="dst" aria-label="Hedef dil"></select></label></div>
     <form id="f">
       <label class="field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
         <input id="url" type="url" inputmode="url" autocomplete="off" enterkeyhint="go" placeholder="https://www.reddit.com/r/.../comments/..." aria-label="Reddit gönderi linki"></label>
@@ -138,14 +139,14 @@ select{flex:1;min-width:0;padding:14px 0;border:0;background:transparent;color:v
     <li><b>3. Çevir</b><span>Türkçe metin orijinalin yerine yazılır.</span></li>
   </ol>
   </main>
-  <footer>TS Translation. Yazı algılama senin cihazında çalışır. Chrome'da çeviri de cihazında yapılır; diğer tarayıcılarda yalnızca yazı metni MyMemory'ye gönderilir, görselin kendisi gönderilmez. Claude seçilirse görsel Anthropic'e gönderilir.</footer>
+  <footer>TS Translation. Yazı algılama senin cihazında çalışır. Chrome'da çeviri de cihazında yapılır; diğer tarayıcılarda yalnızca yazı metni Google Translate veya MyMemory'ye gönderilir, görselin kendisi gönderilmez. Yerel yapay zeka seçilirse model Hugging Face'ten bir kez indirilir ve çeviri tamamen cihazında yapılır. Claude seçilirse görsel Anthropic'e gönderilir.</footer>
 </div>
 
 <dialog id="dlg" aria-labelledby="dt" aria-describedby="dd">
   <div class="dh"><h2 id="dt">Ayarlar</h2><button class="x" id="x" type="button" aria-label="Kapat">×</button></div>
   <p id="dd">Varsayılan çeviri ücretsizdir ve API anahtarı gerektirmez.</p>
   <label for="engine" class="lbl">Çeviri motoru</label>
-  <label class="field"><select id="engine" autofocus><option value="auto">Ücretsiz (anahtar gerekmez)</option><option value="claude">Claude (daha doğal, API anahtarı gerekir)</option></select></label>
+  <label class="field"><select id="engine" autofocus><option value="auto">Ücretsiz (anahtar gerekmez)</option><option value="gemma">Yerel yapay zeka: TranslateGemma (en iyi ücretsiz kalite, ilk seferde ~3 GB indirir, WebGPU gerekir)</option><option value="claude">Claude (daha doğal, API anahtarı gerekir)</option></select></label>
   <label for="key" class="lbl">Anthropic API anahtarı (isteğe bağlı)</label>
   <p class="hint">Yalnızca Claude seçiliyse kullanılır. Bu tarayıcıda saklanır; kimseyle paylaşma, koda yazma.</p>
   <label class="field"><input id="key" type="password" placeholder="sk-ant-..." aria-label="Anthropic API anahtarı" autocomplete="off"></label>
@@ -180,6 +181,22 @@ const msg = (t, err) => { $("#msg").textContent = t; $("#live").textContent = t;
 const openKey = () => { $("#engine").value = store.get("engine") || "auto"; $("#mmemail").value = store.get("mmemail"); $("#proxy").value = store.get("proxy"); $("#dlg").showModal(); };
 const motion = () => matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); kids.forEach(k => e.append(k)); return e; };
+
+/* ---------- Languages ---------- */
+const LANGS = {
+  en: { n: "English", e: "English", t: "eng" }, tr: { n: "Türkçe", e: "Turkish", t: "tur" }, de: { n: "Deutsch", e: "German", t: "deu" },
+  fr: { n: "Français", e: "French", t: "fra" }, es: { n: "Español", e: "Spanish", t: "spa" }, it: { n: "Italiano", e: "Italian", t: "ita" },
+  pt: { n: "Português", e: "Portuguese", t: "por" }, ru: { n: "Русский", e: "Russian", t: "rus" }, ar: { n: "العربية", e: "Arabic", t: "ara" },
+  ja: { n: "日本語", e: "Japanese", t: "jpn" }, ko: { n: "한국어", e: "Korean", t: "kor" }, "zh-CN": { n: "中文", e: "Chinese", t: "chi_sim" }
+};
+const SRC = () => $("#src").value, DST = () => $("#dst").value;
+const sysFor = () => SYSTEM.replace("English-to-Turkish", `${LANGS[SRC()].e}-to-${LANGS[DST()].e}`).replace(/Turkish/g, LANGS[DST()].e);
+for (const [id, def] of [["src", "en"], ["dst", "tr"]]) {
+  const sel = $("#" + id);
+  for (const [k, v] of Object.entries(LANGS)) sel.append(el("option", { value: k, textContent: v.n }));
+  sel.value = LANGS[store.get(id)] ? store.get(id) : def;
+  sel.onchange = () => store.set(id, sel.value);
+}
 
 /* ---------- Reddit ---------- */
 const PROXIES = [
@@ -223,13 +240,30 @@ async function fetchPost(url) {
 }
 
 /* ---------- OCR + grouping ---------- */
-let worker;
-async function detect(canvas) {
+let worker, workerLang;
+// Tesseract works best on dark-on-light text around 30px tall: upscale small images, grayscale, stretch contrast, invert dark themes.
+function prep(src) {
+  const W = src.width, H = src.height, s = Math.max(1, Math.min(3, 2000 / W, 7000 / H));
+  const c = el("canvas", { width: Math.round(W * s), height: Math.round(H * s) }), x = c.getContext("2d", { willReadFrequently: true });
+  x.imageSmoothingQuality = "high"; x.drawImage(src, 0, 0, c.width, c.height);
+  const im = x.getImageData(0, 0, c.width, c.height), d = im.data, n = d.length / 4, hist = new Uint32Array(256);
+  for (let i = 0; i < d.length; i += 4) { const g = (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000 | 0; d[i] = g; hist[g]++; }
+  let sum = 0; for (let g = 0; g < 256; g++) sum += g * hist[g];
+  const inv = sum / n < 110; let lo = 0, hi = 255, a = 0;
+  while (lo < 255 && (a += hist[lo]) < n * .01) lo++;
+  a = 0; while (hi > 0 && (a += hist[hi]) < n * .01) hi--;
+  const k = 255 / Math.max(1, hi - lo);
+  for (let i = 0; i < d.length; i += 4) { let g = Math.min(255, Math.max(0, (d[i] - lo) * k)); if (inv) g = 255 - g; d[i] = d[i + 1] = d[i + 2] = g; d[i + 3] = 255; }
+  x.putImageData(im, 0, 0);
+  return { c, s };
+}
+async function detect(canvas, lang) {
   if (typeof Tesseract === "undefined") throw new Error("OCR kütüphanesi yüklenemedi. İnternet bağlantını kontrol edip sayfayı yenile.");
-  worker ||= await Tesseract.createWorker("eng");
-  const { data } = await worker.recognize(canvas);
-  return (data.lines || []).filter(l => l.confidence > 40 && l.text.trim())
-    .map(l => ({ text: l.text.trim(), x0: l.bbox.x0, y0: l.bbox.y0, x1: l.bbox.x1, y1: l.bbox.y1 }));
+  if (workerLang !== lang) { if (worker) await worker.terminate(); worker = await Tesseract.createWorker(lang); workerLang = lang; }
+  const { c, s } = prep(canvas), { data } = await worker.recognize(c), rd = Math.round, cjk = /^(jpn|kor|chi_sim)$/.test(lang);
+  return (data.lines || []).map(l => ({ text: cjk ? l.text.replace(/\s+/g, "") : l.text.replace(/\s+/g, " ").trim(), conf: l.confidence,
+      x0: rd(l.bbox.x0 / s), y0: rd(l.bbox.y0 / s), x1: rd(l.bbox.x1 / s), y1: rd(l.bbox.y1 / s) }))
+    .filter(l => { const n = (l.text.match(/[\p{L}\p{N}]/gu) || []).length; return l.conf > 35 && n >= 2 && n >= l.text.length * .5 && l.y1 - l.y0 > 6; });
 }
 function group(lines) {
   const bl = [];
@@ -245,7 +279,7 @@ function group(lines) {
   bl.forEach(b => {
     b.x0 = Math.min(...b.lines.map(l => l.x0)); b.y0 = Math.min(...b.lines.map(l => l.y0));
     b.x1 = Math.max(...b.lines.map(l => l.x1)); b.y1 = Math.max(...b.lines.map(l => l.y1));
-    b.text = b.lines.map(l => l.text).join(" ");
+    b.text = b.lines.map(l => l.text).join(" ").replace(/(\p{L})- (\p{Ll})/gu, "$1$2");
   });
   return bl;
 }
@@ -260,7 +294,7 @@ async function translate(canvas, blocks) {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": store.get("key"), "anthropic-version": "2023-06-01",
                "anthropic-dangerous-direct-browser-access": "true" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 4000, system: SYSTEM, messages: [{ role: "user", content: [
+    body: JSON.stringify({ model: MODEL, max_tokens: 4000, system: sysFor(), messages: [{ role: "user", content: [
       { type: "image", source: { type: "base64", media_type: "image/jpeg", data } },
       { type: "text", text: "Text blocks detected by OCR:\n" + JSON.stringify(blocks.map((b, id) => ({ id, text: b.text }))) }] }] })
   });
@@ -268,20 +302,31 @@ async function translate(canvas, blocks) {
   if (!r.ok) throw new Error(j.error?.message || "API hatası " + r.status);
   const raw = j.content.filter(c => c.type === "text").map(c => c.text).join("");
   try {
-    JSON.parse(raw.slice(raw.indexOf("["), raw.lastIndexOf("]") + 1)).forEach(i => { blocks[i.id].tr = i.tr; });
+    JSON.parse(raw.slice(raw.indexOf("["), raw.lastIndexOf("]") + 1)).forEach(i => { if (blocks[i?.id]) blocks[i.id].tr = i.tr; });
   } catch { throw new Error("Model kullanılabilir bir çeviri döndürmedi: " + raw.slice(0, 120)); }  // never fall back to a softened text
 }
 
 /* ---------- Erase + redraw ---------- */
-function ringColor(ctx, x0, y0, x1, y1, W, H) {
-  const m = 6, X0 = Math.max(0, x0 - m), Y0 = Math.max(0, y0 - m), X1 = Math.min(W, x1 + m), Y1 = Math.min(H, y1 + m);
-  const d = ctx.getImageData(X0, Y0, X1 - X0, Y1 - Y0), w = X1 - X0, ch = [[], [], []];
-  for (let y = 0; y < Y1 - Y0; y++) for (let x = 0; x < w; x++) {
-    const ax = X0 + x, ay = Y0 + y;
-    if (ax >= x0 && ax < x1 && ay >= y0 && ay < y1) continue;
-    const i = (y * w + x) * 4; for (let k = 0; k < 3; k++) ch[k].push(d.data[i + k]);
+// Median colour of a thin strip just outside each side of the box, so gradients and shaded bubbles blend in.
+function edge(ctx, x0, y0, x1, y1, W, H) {
+  const m = 4, side = (a, b, c, d) => {
+    a = Math.max(0, a); b = Math.max(0, b); c = Math.min(W, c); d = Math.min(H, d); if (c <= a || d <= b) return null;
+    const p = ctx.getImageData(a, b, c - a, d - b).data, ch = [[], [], []];
+    for (let i = 0; i < p.length; i += 4) for (let k = 0; k < 3; k++) ch[k].push(p[i + k]);
+    return ch.map(v => v.sort((q, r) => q - r)[v.length >> 1]);
+  };
+  const t = side(x0, y0 - m, x1, y0), b = side(x0, y1, x1, y1 + m), l = side(x0 - m, y0, x0, y1), r = side(x1, y0, x1 + m, y1);
+  const all = [t, b, l, r].filter(Boolean), avg = [0, 1, 2].map(k => Math.round(all.reduce((s, c) => s + c[k], 0) / (all.length || 1)));
+  return { t: t || avg, b: b || avg, l: l || avg, r: r || avg, avg };
+}
+function erase(c, f) {
+  const w = f.x1 - f.x0, h = f.y1 - f.y0, im = c.createImageData(w, h), e = f.e;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const u = x / Math.max(1, w - 1), v = y / Math.max(1, h - 1), i = (y * w + x) * 4;
+    for (let k = 0; k < 3; k++) im.data[i + k] = ((e.l[k] * (1 - u) + e.r[k] * u) + (e.t[k] * (1 - v) + e.b[k] * v)) / 2;
+    im.data[i + 3] = 255;
   }
-  return ch.map(a => a.sort((p, q) => p - q)[a.length >> 1] ?? 255);
+  c.putImageData(im, f.x0, f.y0);
 }
 function textColor(ctx, x0, y0, x1, y1, bg) {
   const d = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data, arr = [];
@@ -291,11 +336,11 @@ function textColor(ctx, x0, y0, x1, y1, bg) {
   for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) s[k] += arr[i][k + 1];
   return s.map(v => Math.round(v / n));
 }
-function wrap(c, t, w) {
-  const out = []; let cur = "";
-  for (const word of t.split(/\s+/)) {
-    const x = cur ? cur + " " + word : word;
-    if (c.measureText(x).width <= w || !cur) cur = x; else { out.push(cur); cur = word; }
+function wrap(c, t, w) {   // spaces for most languages, per-character for CJK
+  const sp = /\s/.test(t), parts = sp ? t.split(/\s+/) : [...t], out = []; let cur = "";
+  for (const p of parts) {
+    const x = cur ? cur + (sp ? " " : "") + p : p;
+    if (!cur || c.measureText(x).width <= w) cur = x; else { out.push(cur); cur = p; }
   }
   if (cur) out.push(cur); return out;
 }
@@ -305,24 +350,26 @@ function paint(src, blocks) {
   const out = el("canvas", { width: W, height: H }), c = out.getContext("2d");
   c.drawImage(src, 0, 0);
   const info = blocks.map(b => {
-    const x0 = Math.max(0, b.x0 - 3), y0 = Math.max(0, b.y0 - 3), x1 = Math.min(W, b.x1 + 3), y1 = Math.min(H, b.y1 + 3);
-    const bg = ringColor(sc, x0, y0, x1, y1, W, H);
-    return { x0, y0, x1, y1, bg, col: textColor(sc, x0, y0, x1, y1, bg) };
+    const lh = Math.max(...b.lines.map(l => l.y1 - l.y0)), p = Math.max(3, Math.round(lh * .12));
+    const x0 = Math.max(0, Math.floor(b.x0 - p)), y0 = Math.max(0, Math.floor(b.y0 - p)), x1 = Math.min(W, Math.ceil(b.x1 + p)), y1 = Math.min(H, Math.ceil(b.y1 + p));
+    const e = edge(sc, x0, y0, x1, y1, W, H);
+    return { x0, y0, x1, y1, e, lh, col: textColor(sc, x0, y0, x1, y1, e.avg) };
   });
-  blocks.forEach((b, i) => { if (b.tr == null) return; const f = info[i]; c.fillStyle = `rgb(${f.bg})`; c.fillRect(f.x0, f.y0, f.x1 - f.x0, f.y1 - f.y0); });
-  c.textBaseline = "top";
+  blocks.forEach((b, i) => { if (b.tr != null) erase(c, info[i]); });
+  c.textBaseline = "middle";
   blocks.forEach((b, i) => {
     if (b.tr == null) return;
-    const f = info[i], bw = (f.x1 - f.x0) * 1.1, bh = (f.y1 - f.y0) * 1.15;
-    let size = Math.max(10, Math.round(Math.max(...b.lines.map(l => l.y1 - l.y0)) * 1.1)), lines;
-    for (; size >= 8; size--) {
+    const f = info[i], bw = (b.x1 - b.x0) * 1.05, bh = Math.max((b.y1 - b.y0) * 1.1, f.lh * 1.3);
+    const pitch = b.lines.length > 1 ? (b.lines.at(-1).y0 - b.lines[0].y0) / (b.lines.length - 1) / f.lh : 1.2, lead = Math.min(1.5, Math.max(1.15, pitch));
+    let size = Math.max(9, Math.round(f.lh * .95)), lines;
+    for (; ; size--) {
       c.font = `600 ${size}px ${FONT}`; lines = wrap(c, b.tr, bw);
-      if (lines.length * size * 1.2 <= bh && lines.every(l => c.measureText(l).width <= bw)) break;
+      if (size <= 9 || (lines.length * size * lead <= bh && lines.every(l => c.measureText(l).width <= bw))) break;
     }
     const center = b.lines.length < 2 || std(b.lines.map(l => (l.x0 + l.x1) / 2)) < std(b.lines.map(l => l.x0));
-    let y = (f.y0 + f.y1) / 2 - lines.length * size * 1.2 / 2;
+    let y = (b.y0 + b.y1) / 2 - lines.length * size * lead / 2 + size * lead / 2;
     c.fillStyle = `rgb(${f.col})`;
-    for (const ln of lines) { c.fillText(ln, center ? (f.x0 + f.x1) / 2 - c.measureText(ln).width / 2 : f.x0, y); y += size * 1.2; }
+    for (const ln of lines) { c.fillText(ln, center ? (b.x0 + b.x1) / 2 - c.measureText(ln).width / 2 : b.x0, y); y += size * lead; }
   });
   return out;
 }
@@ -336,7 +383,7 @@ function compare(a, b, n) {
   const upd = () => { top.style.clipPath = `inset(0 ${100 - sl.value}% 0 0)`; bar.style.left = sl.value + "%"; sl.setAttribute("aria-valuetext", `Orijinal yüzde ${sl.value}, çeviri yüzde ${100 - sl.value}`); };
   sl.oninput = upd; upd();
   return el("div", { className: "cmp" }, el("img", { src: b, alt: `Görsel ${n}, Türkçeye çevrilmiş hali` }), top, bar,
-    el("span", { className: "tag l", textContent: "English", lang: "en" }), el("span", { className: "tag r", textContent: "Türkçe" }), sl);
+    el("span", { className: "tag l", textContent: LANGS[SRC()].n, lang: SRC() }), el("span", { className: "tag r", textContent: LANGS[DST()].n }), sl);
 }
 function addResult(srcCanvas, outCanvas, blocks, warning, n) {
   const orig = srcCanvas.toDataURL("image/png"), res = outCanvas.toDataURL("image/png");
@@ -350,7 +397,7 @@ function addResult(srcCanvas, outCanvas, blocks, warning, n) {
     const tb = el("tbody");
     blocks.forEach(b => tb.append(el("tr", {}, el("td", { textContent: b.text, lang: "en" }), el("td", { textContent: b.tr ?? "(değiştirilmedi)" }))));
     const t = el("table", {}, el("caption", { className: "sr", textContent: `Görsel ${n} metinleri` }),
-      el("thead", {}, el("tr", {}, el("th", { scope: "col", textContent: "İngilizce" }), el("th", { scope: "col", textContent: "Türkçe" }))), tb);
+      el("thead", {}, el("tr", {}, el("th", { scope: "col", textContent: LANGS[SRC()].n }), el("th", { scope: "col", textContent: LANGS[DST()].n }))), tb);
     item.append(el("details", { className: "t" }, el("summary", { textContent: "Metinleri göster" }), t));
   }
   $("#post").append(item);
@@ -361,26 +408,33 @@ async function toCanvas(blob) {
 }
 /* ---------- Free translation engines (no API key) ---------- */
 const engine = () => store.get("engine") || "auto";
-let used = "", chromeP = null;
-function warmChrome() {   // must start while the click/paste is still a "user gesture" so Chrome may download its language pack
-  if (chromeP || !("Translator" in self)) return;
+let used = "", chromeP = null, chromeK = "", gtxOk = true;
+function warmChrome() {   // must start inside the user gesture so Chrome may download the language pack
+  const s = SRC().split("-")[0], t = DST().split("-")[0], key = s + t;
+  if (chromeK === key || !("Translator" in self) || s === t) return;
+  chromeK = key;
   chromeP = (async () => {
     try {
-      const o = { sourceLanguage: "en", targetLanguage: "tr" };
+      const o = { sourceLanguage: s, targetLanguage: t };
       if ((await Translator.availability(o)) === "unavailable") return null;
       return await Translator.create({ ...o, monitor(m) { m.addEventListener("downloadprogress", e => msg(`Çeviri modeli indiriliyor… %${Math.round(e.loaded * 100)}`)); } });
     } catch { return null; }
-  })().then(t => { if (!t) chromeP = null; return t; });
+  })().then(tr => { if (!tr) chromeK = ""; return tr; });
 }
 function chunks(t, n = 450) {
   const out = []; let cur = "";
   for (const w of t.split(" ")) { if (cur && (cur + " " + w).length > n) { out.push(cur); cur = w; } else cur = cur ? cur + " " + w : w; }
   if (cur) out.push(cur); return out;
 }
+async function gtx(text) {   // unofficial Google endpoint: better than MyMemory, but may be rate-limited; falls back automatically
+  const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${SRC()}&tl=${DST()}&dt=t&q=${encodeURIComponent(text)}`);
+  if (!r.ok) throw new Error("gtx " + r.status);
+  return (await r.json())[0].map(p => p[0]).join("");
+}
 async function myMemory(text) {
   const em = store.get("mmemail").trim(), out = [];
   for (const c of chunks(text)) {
-    const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(c)}&langpair=en|tr${em ? "&de=" + encodeURIComponent(em) : ""}`);
+    const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(c)}&langpair=${SRC()}|${DST()}${em ? "&de=" + encodeURIComponent(em) : ""}`);
     const j = await r.json().catch(() => ({})), t = j.responseData?.translatedText || "";
     if (r.status === 429 || String(j.responseStatus) === "429" || /MYMEMORY WARNING/i.test(t))
       throw new Error("Ücretsiz günlük çeviri sınırı doldu (MyMemory). Yarın tekrar dene, Ayarlar'a e-posta ekleyerek sınırı artır ya da Claude'u seç.");
@@ -389,16 +443,53 @@ async function myMemory(text) {
   }
   return out.join(" ");
 }
-async function translateFree(blocks) {
-  const tr = await chromeP;
+async function translateFree(blocks) {   // order: on-device Chrome, then Google, then MyMemory
+  const tr = await chromeP; gtxOk = true;
   for (const b of blocks) {
     const t = b.text.replace(/\s+/g, " ").trim();
-    if (!/[A-Za-z]{2}/.test(t) || /^(@|u\/|r\/)|https?:\/\//i.test(t)) { b.tr = null; continue; }   // leave handles, links, numbers alone
+    if (!/\p{L}{2}/u.test(t) || /^(@|u\/|r\/)|https?:\/\//i.test(t)) { b.tr = null; continue; }
     let r = null;
     if (tr) { try { r = await tr.translate(t); used = "Chrome, cihazda"; } catch {} }
+    if (r == null && gtxOk) { try { r = await gtx(t); used = "Google"; } catch { gtxOk = false; } }
     if (r == null) { r = await myMemory(t); used = "MyMemory"; }
     b.tr = r;
   }
+}
+
+/* ---------- On-device TranslateGemma (WebGPU, no key, cached by the browser after the first download) ---------- */
+const GEMMA = { id: "onnx-community/translategemma-text-4b-it-ONNX", size: 3111894696, lib: "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.0.1" };
+let gemmaP = null;
+function loadGemma() {
+  gemmaP ||= (async () => {
+    if (!navigator.gpu || !(await navigator.gpu.requestAdapter())) throw new Error("WebGPU desteklenmiyor");
+    const { pipeline } = await import(GEMMA.lib), got = new Map();
+    return pipeline("text-generation", GEMMA.id, { device: "webgpu", dtype: "q4", progress_callback: e => {
+      if (e.status !== "progress") return;
+      got.set(e.file, e.loaded);
+      msg(`Yerel çeviri modeli indiriliyor (tek seferlik, ~3 GB)… %${Math.min(99, Math.round([...got.values()].reduce((a, b) => a + b, 0) / GEMMA.size * 100))}`);
+    } });
+  })();
+  gemmaP.catch(() => { gemmaP = null; });
+  return gemmaP;
+}
+async function gen(pipe, text) {
+  const out = await pipe([{ role: "user", content: [{ type: "text", source_lang_code: SRC(), target_lang_code: DST(), text }] }],
+    { max_new_tokens: Math.min(1024, text.length + 64), do_sample: false });
+  return String(out[0].generated_text.at(-1).content).trim();
+}
+async function translateGemma(blocks) {
+  let pipe;
+  try { pipe = await loadGemma(); } catch { await translateFree(blocks); used += " · yerel model açılamadı"; return; }   // no WebGPU / download failed: use the free chain
+  const norm = b => b.text.replace(/\s+/g, " ").trim();
+  const todo = blocks.filter(b => { const t = norm(b), skip = !/\p{L}{2}/u.test(t) || /^(@|u\/|r\/)|https?:\/\//i.test(t); if (skip) b.tr = null; return !skip; });
+  const texts = todo.map(norm);
+  let parts = null;
+  if (todo.length > 1 && texts.join("").length < 1500) {   // one pass gives the model the whole image as context; only trusted if the paragraph count matches
+    const p = (await gen(pipe, texts.join("\n\n"))).split(/\n\s*\n/);
+    if (p.length === todo.length) parts = p;
+  }
+  for (let i = 0; i < todo.length; i++) todo[i].tr = parts ? parts[i].trim() : await gen(pipe, texts[i]);
+  used = "TranslateGemma, cihazda";
 }
 
 let pending = null;
@@ -413,6 +504,7 @@ function needKey(p) {
 }
 async function run(sources, heading) {
   if (document.body.dataset.busy) return msg("Önceki çeviri sürüyor, bitmesini bekle.", true);
+  if (SRC() === DST()) return msg("Kaynak ve hedef dil aynı olamaz.", true);
   if (engine() === "claude" && !store.get("key")) return needKey({ sources, heading });
   warmChrome();
   $("#need").hidden = true; pending = null;
@@ -424,10 +516,10 @@ async function run(sources, heading) {
       msg(`${tag}: indiriliyor…`);
       const src = await toCanvas(typeof sources[i] === "string" ? await net(sources[i], "blob") : sources[i]);
       msg(`${tag}: yazılar taranıyor… (ilk seferde OCR modeli indirilir)`);
-      const blocks = group(await detect(src));
-      if (!blocks.length) { addResult(src, src, [], "Bu görselde İngilizce yazı bulunamadı.", i + 1); continue; }
+      const blocks = group(await detect(src, LANGS[SRC()].t));
+      if (!blocks.length) { addResult(src, src, [], "Bu görselde seçilen dilde yazı bulunamadı.", i + 1); continue; }
       used = ""; msg(`${tag}: çevriliyor…`);
-      try { await (engine() === "claude" ? translate(src, blocks).then(() => { used = "Claude"; }) : translateFree(blocks)); addResult(src, paint(src, blocks), blocks, null, i + 1); }
+      try { await (engine() === "claude" ? translate(src, blocks).then(() => { used = "Claude"; }) : engine() === "gemma" ? translateGemma(blocks) : translateFree(blocks)); addResult(src, paint(src, blocks), blocks, null, i + 1); }
       catch (e) { blocks.forEach(b => b.tr = null); addResult(src, src, blocks, e.message, i + 1); }
     }
     msg("");
@@ -436,7 +528,7 @@ async function run(sources, heading) {
   if (!$("#status").classList.contains("err")) { $("#live").textContent = "Çeviri tamamlandı."; post.querySelector("h2").focus({ preventScroll: true }); }
 }
 
-const chip = () => { const c = engine() === "claude"; $("#chipTxt").textContent = c ? "Çeviri: Claude" : "Çeviri: Ücretsiz"; $("#chip").dataset.ok = !c || store.get("key") ? "1" : ""; };
+const chip = () => { const c = engine() === "claude"; $("#chipTxt").textContent = c ? "Çeviri: Claude" : engine() === "gemma" ? "Çeviri: Yerel AI" : "Çeviri: Ücretsiz"; $("#chip").dataset.ok = !c || store.get("key") ? "1" : ""; };
 $("#chip").onclick = openKey; chip();
 $("#save").onclick = () => {
   const v = $("#key").value.trim();
