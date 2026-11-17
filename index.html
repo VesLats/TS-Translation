@@ -81,6 +81,8 @@ dialog[open]{animation:in .2s ease-out}
 .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.x{flex:none;width:44px;height:44px;margin:-8px -8px 0 0;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:1.5rem;cursor:pointer}.x:hover{background:var(--soft)}
 dialog h2{margin:0 0 6px;font-size:1.2rem}dialog p{color:var(--mute);margin:0 0 14px;font-size:.92rem}
 dialog .field{margin-bottom:14px}.acts{display:flex;gap:10px;justify-content:flex-end}
+.need{flex-wrap:wrap;justify-content:space-between;gap:14px}.need p{margin:0}.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.thumbs img{height:64px;width:auto;border-radius:6px;border:1px solid var(--line)}
+.hint{margin:0 0 8px!important;font-size:.88rem!important}.lbl{display:block;margin:10px 0 4px;font-weight:700;font-size:.92rem}
 :focus-visible{outline:2px solid var(--red);outline-offset:2px}
 @media(forced-colors:active){.btn,.chip,.link,.x{border:2px solid ButtonText}.cmp .bar{background:Highlight;forced-color-adjust:none}.cmp .bar:after{background:Highlight;color:HighlightText}.demo i{background:Highlight}}
 @media(max-width:480px){main{padding:0}.card{padding:16px}.item{padding:10px}h1{font-size:1.9rem}#drop{padding:20px 14px}}
@@ -119,12 +121,13 @@ dialog .field{margin-bottom:14px}.acts{display:flex;gap:10px;justify-content:fle
     </form>
     <div class="or">veya</div>
     <div id="drop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
-      <span>Görseli buraya sürükle, yapıştır (Ctrl+V) ya da <button type="button" class="link" id="pick">dosya seç</button></span>
+      <span>Görseli buraya sürükle, Ctrl+V ile yapıştır, <button type="button" class="link" id="paste">panodan yapıştır</button> ya da <button type="button" class="link" id="pick">dosya seç</button></span>
       <input id="file" type="file" accept="image/*" multiple hidden></div>
   </section>
 
   <p id="live" class="sr" role="status" aria-live="polite"></p>
   <div id="status" class="status" hidden aria-hidden="true"><span class="spin"></span><p id="msg"></p></div>
+  <div id="need" class="status need" hidden><div><p id="needTxt"></p><div id="thumbs" class="thumbs"></div></div><button class="btn" id="needBtn" type="button">API anahtarı ekle</button></div>
   <section id="out" aria-label="Sonuçlar" aria-busy="false"></section>
 
   <h2 class="sr">Nasıl çalışır</h2>
@@ -138,9 +141,13 @@ dialog .field{margin-bottom:14px}.acts{display:flex;gap:10px;justify-content:fle
 </div>
 
 <dialog id="dlg" aria-labelledby="dt" aria-describedby="dd">
-  <div class="dh"><h2 id="dt">Anthropic API anahtarı</h2><button class="x" id="x" type="button" aria-label="Kapat">×</button></div>
+  <div class="dh"><h2 id="dt">Ayarlar</h2><button class="x" id="x" type="button" aria-label="Kapat">×</button></div>
   <p id="dd">Anahtar yalnızca bu tarayıcıda saklanır. Başkasıyla paylaşma ve koda yazma.</p>
+  <label for="key" class="lbl">Anthropic API anahtarı</label>
   <label class="field"><input id="key" type="password" placeholder="sk-ant-..." aria-label="Anthropic API anahtarı" autocomplete="off" autofocus></label>
+  <label for="proxy" class="lbl">Proxy adresi (isteğe bağlı)</label>
+  <p class="hint">Reddit linkleri açılmazsa kendi ücretsiz proxy'ni yaz. Kurulum README'de.</p>
+  <label class="field"><input id="proxy" type="url" inputmode="url" autocomplete="off" placeholder="https://ts-proxy.kullanici.workers.dev/"></label>
   <div class="acts"><button class="btn quiet" id="clear" type="button">Anahtarı sil</button><button class="btn" id="save" type="button" style="padding:11px 22px">Kaydet</button></div>
 </dialog>
 
@@ -163,17 +170,35 @@ const store = {
   set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }
 };
 const msg = (t, err) => { $("#msg").textContent = t; $("#live").textContent = t; $("#status").hidden = !t; $("#status").className = "status" + (err ? " err" : ""); };
-const openKey = () => $("#dlg").showModal();
+const openKey = () => { $("#proxy").value = store.get("proxy"); $("#dlg").showModal(); };
 const motion = () => matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); kids.forEach(k => e.append(k)); return e; };
 
 /* ---------- Reddit ---------- */
-const PROXY = u => "https://corsproxy.io/?url=" + encodeURIComponent(u);
+const PROXIES = [
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
+  u => "https://corsproxy.io/?url=" + encodeURIComponent(u)
+];
+function candidates(url) {
+  const mine = store.get("proxy").trim(), list = [];
+  if (mine) list.push(mine.includes("{url}") ? mine.replace("{url}", encodeURIComponent(url)) : mine + (mine.includes("?") ? "&" : "?") + "url=" + encodeURIComponent(url));
+  return list.concat(url, PROXIES.map(p => p(url)));
+}
 async function net(url, kind) {
-  for (const u of [url, PROXY(url)]) {           // try directly, then via a public CORS proxy
-    try { const r = await fetch(u); if (r.ok) return kind === "json" ? await r.json() : await r.blob(); } catch {}
+  const tried = [];
+  for (const u of candidates(url)) {
+    const host = new URL(u).hostname;
+    try {
+      const r = await fetch(u);
+      if (!r.ok) { tried.push(`${host} ${r.status}`); continue; }
+      if (kind === "json") return await r.json();
+      const b = await r.blob();
+      if (b.type.startsWith("image/")) return b;
+      tried.push(`${host} görsel değil`);
+    } catch { tried.push(`${host} engellendi`); }
   }
-  throw new Error("Reddit'ten veri alınamadı (tarayıcı engeli olabilir). Görseli indirip aşağıdaki alana sürükle.");
+  throw new Error(`${kind === "json" ? "Gönderi" : "Görsel"} alınamadı (${tried.join(", ")}). Ayarlar'dan kendi proxy adresini ekle veya görseli kaydedip sürükle.`);
 }
 async function fetchPost(url) {
   const j = await net(url.split("?")[0].replace(/\/$/, "") + ".json?raw_json=1", "json");
@@ -193,6 +218,7 @@ async function fetchPost(url) {
 /* ---------- OCR + grouping ---------- */
 let worker;
 async function detect(canvas) {
+  if (typeof Tesseract === "undefined") throw new Error("OCR kütüphanesi yüklenemedi. İnternet bağlantını kontrol edip sayfayı yenile.");
   worker ||= await Tesseract.createWorker("eng");
   const { data } = await worker.recognize(canvas);
   return (data.lines || []).filter(l => l.confidence > 40 && l.text.trim())
@@ -326,8 +352,20 @@ async function toCanvas(blob) {
   const bmp = await createImageBitmap(blob);
   const c = el("canvas", { width: bmp.width, height: bmp.height }); c.getContext("2d").drawImage(bmp, 0, 0); return c;
 }
+let pending = null;
+function needKey(p) {
+  pending = p;
+  const th = $("#thumbs"); th.replaceChildren();
+  (p.sources || []).forEach((x, i) => { if (typeof x !== "string") th.append(el("img", { src: URL.createObjectURL(x), alt: `Eklenen görsel ${i + 1}` })); });
+  $("#needTxt").textContent = (p.url ? "Link hazır." : `${p.sources.length} görsel hazır.`) + " Çevirmek için önce Anthropic API anahtarını ekle.";
+  $("#live").textContent = $("#needTxt").textContent;
+  $("#need").hidden = false;
+  $("#need").scrollIntoView({ behavior: motion(), block: "center" });
+}
 async function run(sources, heading) {
-  if (!store.get("key")) { openKey(); return msg("Önce Ayarlar'dan Anthropic API anahtarını kaydet.", true); }
+  if (document.body.dataset.busy) return msg("Önceki çeviri sürüyor, bitmesini bekle.", true);
+  if (!store.get("key")) return needKey({ sources, heading });
+  $("#need").hidden = true; pending = null;
   $("#go").disabled = true; document.body.dataset.busy = "1"; $("#out").setAttribute("aria-busy", "true"); $("#out").replaceChildren();
   const post = el("div", { className: "post", id: "post" }, el("h2", { textContent: heading || "Sonuçlar", tabIndex: -1 })); $("#out").append(post); post.scrollIntoView({ behavior: motion(), block: "start" });
   try {
@@ -350,22 +388,67 @@ async function run(sources, heading) {
 
 const chip = () => { const ok = !!store.get("key"); $("#chipTxt").textContent = ok ? "API anahtarı hazır" : "API anahtarı ekle"; $("#chip").dataset.ok = ok ? "1" : ""; };
 $("#chip").onclick = openKey; chip();
-$("#save").onclick = () => { const v = $("#key").value.trim(); if (!v) return; store.set("key", v); $("#key").value = ""; chip(); $("#dlg").close(); msg(""); };
+$("#save").onclick = () => {
+  const v = $("#key").value.trim();
+  if (v) store.set("key", v);
+  store.set("proxy", $("#proxy").value.trim());
+  $("#key").value = ""; chip(); $("#dlg").close(); msg("");
+  if (pending && store.get("key")) { const p = pending; pending = null; $("#need").hidden = true; p.url ? goUrl(p.url) : run(p.sources, p.heading); }
+};
 $("#clear").onclick = () => { store.set("key", ""); chip(); $("#dlg").close(); };
-$("#f").onsubmit = async ev => {
-  ev.preventDefault();
-  const u = $("#url").value.trim(); if (!u) { msg("Önce bir Reddit linki yapıştır.", true); return $("#url").focus(); }
+async function goUrl(u) {
+  if (document.body.dataset.busy) return;
   try { msg("Gönderi okunuyor…"); const p = await fetchPost(u); await run(p.imgs, `${p.title} (r/${p.sub})`); }
   catch (e) { msg(e.message, true); }
+}
+$("#f").onsubmit = ev => {
+  ev.preventDefault();
+  const u = $("#url").value.trim();
+  if (!u) { msg("Önce bir Reddit linki yapıştır.", true); return $("#url").focus(); }
+  if (!store.get("key")) return needKey({ url: u });
+  $("#need").hidden = true; pending = null;
+  goUrl(u);
 };
-const files = fl => { const a = [...fl].filter(f => f.type.startsWith("image/")); if (a.length) run(a, "Yüklenen görseller"); };
-$("#file").onchange = e => { files(e.target.files); e.target.value = ""; };
-document.addEventListener("paste", e => files(e.clipboardData?.files || []));
+const files = fl => {
+  const all = [...fl], a = all.filter(f => f.type.startsWith("image/"));
+  if (a.length) run(a, "Yüklenen görseller"); else if (all.length) msg("Bu bir görsel dosyası değil. PNG, JPG veya WebP ekle.", true);
+};
+$("#file").onchange = e => { files([...e.target.files]); e.target.value = ""; };
+document.addEventListener("paste", e => {
+  if ($("#dlg").open || !e.clipboardData) return;
+  const cd = e.clipboardData;
+  const imgs = [...cd.items].filter(i => i.kind === "file" && i.type.startsWith("image/")).map(i => i.getAsFile()).filter(Boolean);
+  if (imgs.length) { e.preventDefault(); return files(imgs); }
+  const m = (cd.getData("text/html") || "").match(/<img[^>]+src=["'](https?:[^"']+)["']/i);   // "Copy image" from some pages only gives HTML
+  if (m) { e.preventDefault(); return run([m[1].replace(/&amp;/g, "&")], "Yapıştırılan görsel"); }
+  const t = (cd.getData("text") || "").trim();   // a pasted link outside a text field goes into the link box
+  if (/^https?:\/\/\S+$/.test(t) && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) {
+    e.preventDefault(); $("#url").value = t; $("#url").focus(); msg("Link yapıştırıldı. Çevir'e bas.");
+  }
+});
+async function pasteFromClipboard() {
+  try {
+    const out = [];
+    for (const it of await navigator.clipboard.read()) {
+      const type = it.types.find(t => t.startsWith("image/"));
+      if (type) out.push(new File([await it.getType(type)], "pano.png", { type }));
+    }
+    out.length ? files(out) : msg("Panoda görsel yok. Görsele sağ tıklayıp \"Görseli kopyala\" seç, sonra tekrar dene.", true);
+  } catch { msg("Panoya erişilemedi. Tarayıcı iznini kontrol et ya da Ctrl+V kullan.", true); }
+}
 const drop = $("#drop");
 ["dragover", "dragenter"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
 ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
-drop.addEventListener("drop", e => files(e.dataTransfer.files));
+document.addEventListener("dragover", e => e.preventDefault());   // stop the browser from opening a dropped file
+document.addEventListener("drop", e => {
+  e.preventDefault();
+  const dt = e.dataTransfer, url = (dt.getData("text/uri-list") || "").split("\n")[0].trim();
+  if (dt.files.length) files([...dt.files]); else if (/^https?:/.test(url)) run([url], "Bırakılan görsel");
+});
 $("#pick").onclick = () => $("#file").click();
+$("#needBtn").onclick = openKey;
+$("#paste").onclick = pasteFromClipboard;
+if (!navigator.clipboard?.read) $("#paste").hidden = true;
 $("#key").addEventListener("keydown", e => { if (e.key === "Enter") $("#save").click(); });
 $("#x").onclick = () => $("#dlg").close();
 </script>
