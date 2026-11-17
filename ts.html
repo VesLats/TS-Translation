@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TS Translation: Görsellerdeki yazıyı Türkçeye çevir</title>
+<meta name="description" content="Görsellerdeki İngilizce yazıyı algılar, filtrelemeden Türkçeye çevirir ve resmin üzerine geri yazar.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0F172A">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;800&display=swap">
+<style>
+:root{--bg:#f3f5f9;--ink:#0f172a;--mute:#5d6778;--line:#dde2ea;--card:#fff;--soft:#eaeef5;--red:#e30a17;--r:14px;--btn:#e30a17;color-scheme:light dark;--sh:0 1px 2px rgba(15,23,42,.06),0 12px 32px -12px rgba(15,23,42,.18)}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1020;--ink:#eef1f7;--mute:#9aa4b6;--line:#232c42;--card:#131a2d;--soft:#1a2238;--red:#ff3341;--sh:0 1px 2px rgba(0,0,0,.4),0 16px 40px -16px rgba(0,0,0,.6)}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--bg) radial-gradient(circle at 1px 1px,var(--line) 1px,transparent 0) 0 0/22px 22px;color:var(--ink);font:16px/1.55 Manrope,"Segoe UI Variable","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding:0 max(20px,env(safe-area-inset-right)) 0 max(20px,env(safe-area-inset-left))}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:12px;top:-60px;z-index:10;padding:12px 18px;border-radius:8px;background:var(--ink);color:var(--bg);font-weight:700;text-decoration:none}.skip:focus{top:12px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:20px 0}
+.brand{display:flex;align-items:center;gap:11px;font-size:1.15rem;text-decoration:none;color:var(--ink)}
+.brand svg{width:36px;height:36px;display:block}.brand b{font-weight:800;letter-spacing:-.01em}.brand span{font-weight:500}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:99px;background:var(--card);color:var(--ink);font-weight:600;font-size:.9rem;line-height:1;font-family:inherit;cursor:pointer;transition:border-color .15s,transform .15s}
+.chip:hover{border-color:var(--mute)}.chip:active{transform:scale(.97)}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--red)}.chip[data-ok="1"] i{background:#16a34a}
+.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:36px;align-items:center;padding:34px 0 30px}
+h1{font-size:clamp(2rem,5vw,3.05rem);line-height:1.08;letter-spacing:-.03em;font-weight:800;margin:0 0 14px}
+.lead{color:var(--mute);margin:0;max-width:46ch}
+.demo{position:relative;display:grid;grid-template-columns:1fr 1fr;min-height:190px;border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);border:1px solid var(--line);font-weight:800;font-size:1.25rem;line-height:1.2}
+.demo div{display:flex;align-items:center;padding:18px}
+.demo-l{background:var(--card);color:var(--mute)}.demo-r{background:var(--ink);color:#fff}
+.demo i{position:absolute;left:50%;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--red)}
+.demo i:after{content:"";position:absolute;top:50%;left:50%;width:30px;height:30px;margin:-15px;border-radius:50%;background:var(--red);box-shadow:0 0 0 5px var(--card)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:22px}
+form{display:flex;gap:10px}
+.field{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:0 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);transition:border-color .15s,box-shadow .15s}
+.field:focus-within{outline:2px solid var(--red);outline-offset:2px;border-color:var(--red);box-shadow:0 0 0 4px color-mix(in srgb,var(--red) 16%,transparent)}
+.field svg{width:18px;height:18px;flex:none;color:var(--mute)}
+input::placeholder{color:var(--mute);opacity:1}
+input{flex:1;min-width:0;padding:14px 0;border:0;background:transparent;color:var(--ink);font:inherit;outline:0}
+button{font-family:inherit}
+.btn{padding:0 24px;border:0;border-radius:10px;background:var(--btn);color:#fff;min-height:48px;font-weight:700;font-size:1rem;font-family:inherit;cursor:pointer;transition:filter .15s,transform .15s}
+.btn:hover{filter:brightness(1.08)}.btn:active{transform:scale(.97)}.btn:disabled{opacity:.55;cursor:progress}
+.btn.quiet{background:transparent;color:var(--ink);border:1.5px solid var(--line);padding:11px 18px}
+.or{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--mute);font-size:.85rem}.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+#drop{display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px;border:2px dashed var(--line);border-radius:10px;text-align:center;color:var(--mute);transition:border-color .15s,background .15s}
+#drop svg{width:26px;height:26px;color:var(--ink)}
+#drop.over{border-color:var(--red);background:color-mix(in srgb,var(--red) 7%,transparent);color:var(--ink)}
+.link{padding:2px 0;border:0;background:none;color:var(--ink);font:inherit;font-weight:700;text-decoration:underline;text-decoration-color:var(--red);text-decoration-thickness:2px;text-underline-offset:3px;cursor:pointer}
+.status{display:flex;align-items:center;gap:12px;margin:18px 0 0;padding:14px 18px;border-radius:10px;background:var(--card);border:1px solid var(--line);box-shadow:var(--sh)}
+.status[hidden]{display:none}.status p{margin:0}.status.err{border-color:var(--red);color:var(--red);font-weight:600}
+.spin{display:none;width:18px;height:18px;flex:none;border:2.5px solid var(--line);border-top-color:var(--red);border-radius:50%;animation:s .8s linear infinite}
+[data-busy] .spin{display:block}.err .spin{display:none!important}
+@keyframes s{to{transform:rotate(360deg)}}
+.post h2{font-size:1.3rem;letter-spacing:-.01em;margin:34px 0 14px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:14px;margin-bottom:22px;animation:in .35s ease-out both}
+@keyframes in{from{opacity:0;transform:translateY(10px)}}
+.cmp{position:relative;line-height:0;overflow:hidden;border-radius:9px;user-select:none;background:var(--soft)}
+.cmp img{width:100%;height:auto;display:block}
+.cmp .top{position:absolute;inset:0;clip-path:inset(0 50% 0 0)}
+.cmp:has(input:focus-visible){outline:3px solid var(--red);outline-offset:3px}
+.cmp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0;padding:0}
+.cmp .bar{position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;background:var(--red);pointer-events:none}
+.cmp .bar:after{content:"↔";position:absolute;top:50%;left:50%;width:34px;height:34px;margin:-17px;border-radius:50%;background:var(--btn);color:#fff;font:700 16px/34px system-ui;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.tag{position:absolute;top:10px;padding:3px 10px;border-radius:99px;background:rgba(15,23,42,.88);color:#fff;font:700 12px/1.6 Manrope,system-ui;pointer-events:none;backdrop-filter:blur(4px)}
+.tag.l{left:10px}.tag.r{right:10px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;color:var(--mute);font-size:.9rem}
+.foot a{display:inline-flex;align-items:center;min-height:44px;padding:8px 16px;border-radius:8px;background:var(--ink);color:var(--bg);font-weight:700;text-decoration:none;transition:opacity .15s}.foot a:hover{opacity:.85}
+.warn{margin-top:10px;color:var(--red);font-size:.9rem;font-weight:600}
+details.t{margin-top:10px;color:var(--mute)}details.t summary{cursor:pointer;font-weight:600}
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.9rem;color:var(--ink)}
+td,th{padding:8px;border-top:1px solid var(--line);vertical-align:top;width:50%;text-align:left;overflow-wrap:anywhere}th{font-weight:700;border-top:0;color:var(--mute)}
+.how{list-style:none;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:34px 0 0}
+.how li{padding:18px;border-radius:var(--r);background:var(--soft)}.how b{display:block;margin-bottom:2px}.how span{color:var(--mute);font-size:.92rem}
+footer{padding:34px 0 48px;color:var(--mute);font-size:.9rem}
+dialog{width:min(440px,92vw);border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:var(--ink);padding:24px;box-shadow:var(--sh);max-height:90vh;max-height:90dvh;overflow:auto}
+dialog::backdrop{background:rgba(11,16,32,.55);backdrop-filter:blur(3px)}
+dialog[open]{animation:in .2s ease-out}
+.dh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.x{flex:none;width:44px;height:44px;margin:-8px -8px 0 0;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:1.5rem;cursor:pointer}.x:hover{background:var(--soft)}
+dialog h2{margin:0 0 6px;font-size:1.2rem}dialog p{color:var(--mute);margin:0 0 14px;font-size:.92rem}
+dialog .field{margin-bottom:14px}.acts{display:flex;gap:10px;justify-content:flex-end}
+:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+@media(forced-colors:active){.btn,.chip,.link,.x{border:2px solid ButtonText}.cmp .bar{background:Highlight;forced-color-adjust:none}.cmp .bar:after{background:Highlight;color:HighlightText}.demo i{background:Highlight}}
+@media(max-width:480px){main{padding:0}.card{padding:16px}.item{padding:10px}h1{font-size:1.9rem}#drop{padding:20px 14px}}
+@media(max-width:720px){.hero{grid-template-columns:1fr}.how{grid-template-columns:1fr}form{flex-direction:column}.btn{padding:14px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Ana içeriğe geç</a>
+<noscript><p style="padding:20px;text-align:center">TS Translation çalışmak için JavaScript gerektirir.</p></noscript>
+<div class="wrap">
+  <header>
+    <a class="brand" href="./" aria-label="TS Translation">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#0F172A"/><rect x=".5" y=".5" width="63" height="63" rx="15.5" fill="none" stroke="#fff" stroke-opacity=".14"/><path d="M13 21h22M24 21v26" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/><path d="M52 26c0-6-12-7-12 0 0 7 12 6 12 14 0 7-12 7-13 1" fill="none" stroke="#E30A17" stroke-width="5.5" stroke-linecap="round"/></svg>
+      <div><b>TS</b> <span>Translation</span></div>
+    </a>
+    <button class="chip" id="chip" type="button" aria-haspopup="dialog"><i></i><span id="chipTxt">API anahtarı ekle</span></button>
+  </header>
+
+  <main id="main">
+
+  <section class="hero">
+    <div>
+      <h1>Görsellerdeki yazıyı Türkçeye çevir.</h1>
+      <p class="lead">Bir Reddit gönderisi yapıştır. İngilizce yazılar silinir, aynı yere doğal Türkçe olarak geri yazılır. Küfür ve argo dahil, hiçbir şey yumuşatılmaz.</p>
+    </div>
+    <div class="demo" aria-hidden="true"><div class="demo-l" lang="en">No way this is real.</div><div class="demo-r">Yok artık, bu gerçek olamaz.</div><i></i></div>
+  </section>
+
+  <section class="card" aria-labelledby="ct">
+    <h2 id="ct" class="sr">Çevirmek istediğin görsel</h2>
+    <form id="f">
+      <label class="field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+        <input id="url" type="url" inputmode="url" autocomplete="off" enterkeyhint="go" placeholder="https://www.reddit.com/r/.../comments/..." aria-label="Reddit gönderi linki"></label>
+      <button class="btn" id="go">Çevir</button>
+    </form>
+    <div class="or">veya</div>
+    <div id="drop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+      <span>Görseli buraya sürükle, yapıştır (Ctrl+V) ya da <button type="button" class="link" id="pick">dosya seç</button></span>
+      <input id="file" type="file" accept="image/*" multiple hidden></div>
+  </section>
+
+  <p id="live" class="sr" role="status" aria-live="polite"></p>
+  <div id="status" class="status" hidden aria-hidden="true"><span class="spin"></span><p id="msg"></p></div>
+  <section id="out" aria-label="Sonuçlar" aria-busy="false"></section>
+
+  <h2 class="sr">Nasıl çalışır</h2>
+  <ol class="how">
+    <li><b>1. Yapıştır</b><span>Gönderi linkini ya da görseli ekle.</span></li>
+    <li><b>2. Algıla</b><span>Yazılar tarayıcında bulunur ve gruplanır.</span></li>
+    <li><b>3. Çevir</b><span>Türkçe metin orijinalin yerine yazılır.</span></li>
+  </ol>
+  </main>
+  <footer>TS Translation. Yazı algılama tarayıcında çalışır; çeviri için görsel yalnızca Anthropic API'sine gönderilir.</footer>
+</div>
+
+<dialog id="dlg" aria-labelledby="dt" aria-describedby="dd">
+  <div class="dh"><h2 id="dt">Anthropic API anahtarı</h2><button class="x" id="x" type="button" aria-label="Kapat">×</button></div>
+  <p id="dd">Anahtar yalnızca bu tarayıcıda saklanır. Başkasıyla paylaşma ve koda yazma.</p>
+  <label class="field"><input id="key" type="password" placeholder="sk-ant-..." aria-label="Anthropic API anahtarı" autocomplete="off" autofocus></label>
+  <div class="acts"><button class="btn quiet" id="clear" type="button">Anahtarı sil</button><button class="btn" id="save" type="button" style="padding:11px 22px">Kaydet</button></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const MODEL = "claude-sonnet-5-5";
+const FONT = '"Segoe UI",Arial,"Helvetica Neue",sans-serif';
+const SYSTEM = `You are a professional English-to-Turkish translator working inside an image localization tool.
+Your job is FAITHFUL translation, not moderation. The source images come from social media and often contain profanity, slurs, sexual language, slang, insults, dark humor and informal speech. Rules:
+- Translate everything exactly as written. Never censor, soften, sanitize, omit, add warnings, or replace words with milder ones. Swear words become natural Turkish swear words of the same intensity.
+- Preserve tone, register, humor, sarcasm and ALL CAPS. Use natural, idiomatic Turkish (colloquial for slang, formal for formal), not word-for-word output.
+- Keep usernames, @handles, URLs, numbers, brand names and logos unchanged. If a block is already Turkish or should not be translated, return null for it.
+- Text blocks are fragments of one image; use the image for context. OCR may contain errors: fix them using the image.
+- Keep each translation roughly the same length when possible, since it must fit the original space.
+Reply with ONLY a JSON array: [{"id": <int>, "tr": <string or null>}, ...] covering every id. No other text.`;
+
+const store = {
+  get: k => { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }
+};
+const msg = (t, err) => { $("#msg").textContent = t; $("#live").textContent = t; $("#status").hidden = !t; $("#status").className = "status" + (err ? " err" : ""); };
+const openKey = () => $("#dlg").showModal();
+const motion = () => matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); kids.forEach(k => e.append(k)); return e; };
+
+/* ---------- Reddit ---------- */
+const PROXY = u => "https://corsproxy.io/?url=" + encodeURIComponent(u);
+async function net(url, kind) {
+  for (const u of [url, PROXY(url)]) {           // try directly, then via a public CORS proxy
+    try { const r = await fetch(u); if (r.ok) return kind === "json" ? await r.json() : await r.blob(); } catch {}
+  }
+  throw new Error("Reddit'ten veri alınamadı (tarayıcı engeli olabilir). Görseli indirip aşağıdaki alana sürükle.");
+}
+async function fetchPost(url) {
+  const j = await net(url.split("?")[0].replace(/\/$/, "") + ".json?raw_json=1", "json");
+  let p = j[0].data.children[0].data;
+  if (p.crosspost_parent_list?.length) p = p.crosspost_parent_list[0];
+  const imgs = [];
+  if (p.is_gallery) {
+    for (const it of p.gallery_data.items) {
+      const m = p.media_metadata[it.media_id];
+      if (m?.status === "valid" && m.s) { const u = m.s.u || m.s.gif; if (u) imgs.push(u.replace(/&amp;/g, "&")); }
+    }
+  } else if (p.post_hint === "image" || /\.(jpe?g|png|webp)(\?|$)/i.test(p.url || "")) imgs.push(p.url);
+  if (!imgs.length) throw new Error("Bu gönderide görsel bulunamadı. Yalnızca resim ve galeri gönderileri destekleniyor.");
+  return { title: p.title, sub: p.subreddit, imgs };
+}
+
+/* ---------- OCR + grouping ---------- */
+let worker;
+async function detect(canvas) {
+  worker ||= await Tesseract.createWorker("eng");
+  const { data } = await worker.recognize(canvas);
+  return (data.lines || []).filter(l => l.confidence > 40 && l.text.trim())
+    .map(l => ({ text: l.text.trim(), x0: l.bbox.x0, y0: l.bbox.y0, x1: l.bbox.x1, y1: l.bbox.y1 }));
+}
+function group(lines) {
+  const bl = [];
+  lines.sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0);
+  for (const l of lines) {
+    const b = bl.find(b => {
+      const t = b.lines.at(-1), th = t.y1 - t.y0, lh = l.y1 - l.y0;
+      const ov = Math.min(t.x1, l.x1) - Math.max(t.x0, l.x0), nw = Math.max(1, Math.min(t.x1 - t.x0, l.x1 - l.x0)), gap = l.y0 - t.y1;
+      return ov / nw > .3 && gap > -th * .3 && gap < th * .8 && Math.max(th, lh) / Math.max(1, Math.min(th, lh)) < 1.5;
+    });
+    b ? b.lines.push(l) : bl.push({ lines: [l], tr: null });
+  }
+  bl.forEach(b => {
+    b.x0 = Math.min(...b.lines.map(l => l.x0)); b.y0 = Math.min(...b.lines.map(l => l.y0));
+    b.x1 = Math.max(...b.lines.map(l => l.x1)); b.y1 = Math.max(...b.lines.map(l => l.y1));
+    b.text = b.lines.map(l => l.text).join(" ");
+  });
+  return bl;
+}
+
+/* ---------- Translation (Claude, directly from the browser) ---------- */
+async function translate(canvas, blocks) {
+  const s = Math.min(1, 1568 / Math.max(canvas.width, canvas.height));
+  const sm = el("canvas", { width: Math.round(canvas.width * s), height: Math.round(canvas.height * s) });
+  sm.getContext("2d").drawImage(canvas, 0, 0, sm.width, sm.height);
+  const data = sm.toDataURL("image/jpeg", .9).split(",")[1];
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": store.get("key"), "anthropic-version": "2023-06-01",
+               "anthropic-dangerous-direct-browser-access": "true" },
+    body: JSON.stringify({ model: MODEL, max_tokens: 4000, system: SYSTEM, messages: [{ role: "user", content: [
+      { type: "image", source: { type: "base64", media_type: "image/jpeg", data } },
+      { type: "text", text: "Text blocks detected by OCR:\n" + JSON.stringify(blocks.map((b, id) => ({ id, text: b.text }))) }] }] })
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error?.message || "API hatası " + r.status);
+  const raw = j.content.filter(c => c.type === "text").map(c => c.text).join("");
+  try {
+    JSON.parse(raw.slice(raw.indexOf("["), raw.lastIndexOf("]") + 1)).forEach(i => { blocks[i.id].tr = i.tr; });
+  } catch { throw new Error("Model kullanılabilir bir çeviri döndürmedi: " + raw.slice(0, 120)); }  // never fall back to a softened text
+}
+
+/* ---------- Erase + redraw ---------- */
+function ringColor(ctx, x0, y0, x1, y1, W, H) {
+  const m = 6, X0 = Math.max(0, x0 - m), Y0 = Math.max(0, y0 - m), X1 = Math.min(W, x1 + m), Y1 = Math.min(H, y1 + m);
+  const d = ctx.getImageData(X0, Y0, X1 - X0, Y1 - Y0), w = X1 - X0, ch = [[], [], []];
+  for (let y = 0; y < Y1 - Y0; y++) for (let x = 0; x < w; x++) {
+    const ax = X0 + x, ay = Y0 + y;
+    if (ax >= x0 && ax < x1 && ay >= y0 && ay < y1) continue;
+    const i = (y * w + x) * 4; for (let k = 0; k < 3; k++) ch[k].push(d.data[i + k]);
+  }
+  return ch.map(a => a.sort((p, q) => p - q)[a.length >> 1] ?? 255);
+}
+function textColor(ctx, x0, y0, x1, y1, bg) {
+  const d = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data, arr = [];
+  for (let i = 0; i < d.length; i += 4) arr.push([Math.hypot(d[i] - bg[0], d[i + 1] - bg[1], d[i + 2] - bg[2]), d[i], d[i + 1], d[i + 2]]);
+  arr.sort((a, b) => b[0] - a[0]);
+  const n = Math.max(1, arr.length / 10 | 0), s = [0, 0, 0];
+  for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) s[k] += arr[i][k + 1];
+  return s.map(v => Math.round(v / n));
+}
+function wrap(c, t, w) {
+  const out = []; let cur = "";
+  for (const word of t.split(/\s+/)) {
+    const x = cur ? cur + " " + word : word;
+    if (c.measureText(x).width <= w || !cur) cur = x; else { out.push(cur); cur = word; }
+  }
+  if (cur) out.push(cur); return out;
+}
+const std = a => { const m = a.reduce((p, q) => p + q, 0) / a.length; return Math.sqrt(a.reduce((p, q) => p + (q - m) ** 2, 0) / a.length); };
+function paint(src, blocks) {
+  const W = src.width, H = src.height, sc = src.getContext("2d");
+  const out = el("canvas", { width: W, height: H }), c = out.getContext("2d");
+  c.drawImage(src, 0, 0);
+  const info = blocks.map(b => {
+    const x0 = Math.max(0, b.x0 - 3), y0 = Math.max(0, b.y0 - 3), x1 = Math.min(W, b.x1 + 3), y1 = Math.min(H, b.y1 + 3);
+    const bg = ringColor(sc, x0, y0, x1, y1, W, H);
+    return { x0, y0, x1, y1, bg, col: textColor(sc, x0, y0, x1, y1, bg) };
+  });
+  blocks.forEach((b, i) => { if (b.tr == null) return; const f = info[i]; c.fillStyle = `rgb(${f.bg})`; c.fillRect(f.x0, f.y0, f.x1 - f.x0, f.y1 - f.y0); });
+  c.textBaseline = "top";
+  blocks.forEach((b, i) => {
+    if (b.tr == null) return;
+    const f = info[i], bw = (f.x1 - f.x0) * 1.1, bh = (f.y1 - f.y0) * 1.15;
+    let size = Math.max(10, Math.round(Math.max(...b.lines.map(l => l.y1 - l.y0)) * 1.1)), lines;
+    for (; size >= 8; size--) {
+      c.font = `600 ${size}px ${FONT}`; lines = wrap(c, b.tr, bw);
+      if (lines.length * size * 1.2 <= bh && lines.every(l => c.measureText(l).width <= bw)) break;
+    }
+    const center = b.lines.length < 2 || std(b.lines.map(l => (l.x0 + l.x1) / 2)) < std(b.lines.map(l => l.x0));
+    let y = (f.y0 + f.y1) / 2 - lines.length * size * 1.2 / 2;
+    c.fillStyle = `rgb(${f.col})`;
+    for (const ln of lines) { c.fillText(ln, center ? (f.x0 + f.x1) / 2 - c.measureText(ln).width / 2 : f.x0, y); y += size * 1.2; }
+  });
+  return out;
+}
+
+/* ---------- UI ---------- */
+function compare(a, b, n) {
+  const top = el("div", { className: "top" }, el("img", { src: a, alt: "" }));
+  const bar = el("div", { className: "bar" });
+  const sl = el("input", { type: "range", min: 0, max: 100, value: 50 });
+  sl.setAttribute("aria-label", `Görsel ${n}: orijinal ve çeviriyi karşılaştır`);
+  const upd = () => { top.style.clipPath = `inset(0 ${100 - sl.value}% 0 0)`; bar.style.left = sl.value + "%"; sl.setAttribute("aria-valuetext", `Orijinal yüzde ${sl.value}, çeviri yüzde ${100 - sl.value}`); };
+  sl.oninput = upd; upd();
+  return el("div", { className: "cmp" }, el("img", { src: b, alt: `Görsel ${n}, Türkçeye çevrilmiş hali` }), top, bar,
+    el("span", { className: "tag l", textContent: "English", lang: "en" }), el("span", { className: "tag r", textContent: "Türkçe" }), sl);
+}
+function addResult(srcCanvas, outCanvas, blocks, warning, n) {
+  const orig = srcCanvas.toDataURL("image/png"), res = outCanvas.toDataURL("image/png");
+  const done = blocks.filter(b => b.tr != null).length;
+  const dl = el("a", { href: res, download: `ts-translation-${n}.png`, textContent: "İndir" });
+  dl.setAttribute("aria-label", `Görsel ${n} çevirisini indir`);
+  const item = el("div", { className: "item" }, compare(orig, res, n),
+    el("div", { className: "foot" }, el("span", { textContent: `${blocks.length} yazı bloğundan ${done} tanesi çevrildi` }), dl));
+  if (warning) { const w = el("p", { className: "warn", textContent: warning }); w.setAttribute("role", "alert"); item.append(w); }
+  if (blocks.length) {
+    const tb = el("tbody");
+    blocks.forEach(b => tb.append(el("tr", {}, el("td", { textContent: b.text, lang: "en" }), el("td", { textContent: b.tr ?? "(değiştirilmedi)" }))));
+    const t = el("table", {}, el("caption", { className: "sr", textContent: `Görsel ${n} metinleri` }),
+      el("thead", {}, el("tr", {}, el("th", { scope: "col", textContent: "İngilizce" }), el("th", { scope: "col", textContent: "Türkçe" }))), tb);
+    item.append(el("details", { className: "t" }, el("summary", { textContent: "Metinleri göster" }), t));
+  }
+  $("#post").append(item);
+}
+async function toCanvas(blob) {
+  const bmp = await createImageBitmap(blob);
+  const c = el("canvas", { width: bmp.width, height: bmp.height }); c.getContext("2d").drawImage(bmp, 0, 0); return c;
+}
+async function run(sources, heading) {
+  if (!store.get("key")) { openKey(); return msg("Önce Ayarlar'dan Anthropic API anahtarını kaydet.", true); }
+  $("#go").disabled = true; document.body.dataset.busy = "1"; $("#out").setAttribute("aria-busy", "true"); $("#out").replaceChildren();
+  const post = el("div", { className: "post", id: "post" }, el("h2", { textContent: heading || "Sonuçlar", tabIndex: -1 })); $("#out").append(post); post.scrollIntoView({ behavior: motion(), block: "start" });
+  try {
+    for (let i = 0; i < sources.length; i++) {
+      const tag = `Görsel ${i + 1}/${sources.length}`;
+      msg(`${tag}: indiriliyor…`);
+      const src = await toCanvas(typeof sources[i] === "string" ? await net(sources[i], "blob") : sources[i]);
+      msg(`${tag}: yazılar taranıyor… (ilk seferde OCR modeli indirilir)`);
+      const blocks = group(await detect(src));
+      if (!blocks.length) { addResult(src, src, [], "Bu görselde İngilizce yazı bulunamadı.", i + 1); continue; }
+      msg(`${tag}: çevriliyor…`);
+      try { await translate(src, blocks); addResult(src, paint(src, blocks), blocks, null, i + 1); }
+      catch (e) { blocks.forEach(b => b.tr = null); addResult(src, src, blocks, e.message, i + 1); }
+    }
+    msg("");
+  } catch (e) { msg(e.message, true); }
+  $("#go").disabled = false; delete document.body.dataset.busy; $("#out").setAttribute("aria-busy", "false");
+  if (!$("#status").classList.contains("err")) { $("#live").textContent = "Çeviri tamamlandı."; post.querySelector("h2").focus({ preventScroll: true }); }
+}
+
+const chip = () => { const ok = !!store.get("key"); $("#chipTxt").textContent = ok ? "API anahtarı hazır" : "API anahtarı ekle"; $("#chip").dataset.ok = ok ? "1" : ""; };
+$("#chip").onclick = openKey; chip();
+$("#save").onclick = () => { const v = $("#key").value.trim(); if (!v) return; store.set("key", v); $("#key").value = ""; chip(); $("#dlg").close(); msg(""); };
+$("#clear").onclick = () => { store.set("key", ""); chip(); $("#dlg").close(); };
+$("#f").onsubmit = async ev => {
+  ev.preventDefault();
+  const u = $("#url").value.trim(); if (!u) { msg("Önce bir Reddit linki yapıştır.", true); return $("#url").focus(); }
+  try { msg("Gönderi okunuyor…"); const p = await fetchPost(u); await run(p.imgs, `${p.title} (r/${p.sub})`); }
+  catch (e) { msg(e.message, true); }
+};
+const files = fl => { const a = [...fl].filter(f => f.type.startsWith("image/")); if (a.length) run(a, "Yüklenen görseller"); };
+$("#file").onchange = e => { files(e.target.files); e.target.value = ""; };
+document.addEventListener("paste", e => files(e.clipboardData?.files || []));
+const drop = $("#drop");
+["dragover", "dragenter"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => files(e.dataTransfer.files));
+$("#pick").onclick = () => $("#file").click();
+$("#key").addEventListener("keydown", e => { if (e.key === "Enter") $("#save").click(); });
+$("#x").onclick = () => $("#dlg").close();
+</script>
+</body>
+</html>
